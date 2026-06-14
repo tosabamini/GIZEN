@@ -14,8 +14,12 @@ class GizenApp extends StatelessWidget {
       title: 'GIZEN',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2E7D32)),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF00C853),
+          brightness: Brightness.light,
+        ),
         useMaterial3: true,
+        fontFamily: 'Roboto',
       ),
       home: const MapScreen(),
     );
