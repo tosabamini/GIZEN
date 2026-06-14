@@ -47,7 +47,7 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  // ─── ゴミ箱 CRUD ───────────────────────────────────────────
+  // ─── Trash Bin CRUD ──────────────────────────────────────
 
   void _onMapLongPress(TapPosition _, LatLng point) {
     _showBinSheet(null, point);
@@ -95,7 +95,7 @@ class _MapScreenState extends State<MapScreen> {
               ),
               const SizedBox(width: 12),
               Text(
-                isNew ? '新しいゴミ箱を追加' : 'ゴミ箱の情報を編集',
+                isNew ? 'Add New Trash Bin' : 'Edit Trash Bin',
                 style: const TextStyle(
                     fontSize: 18, fontWeight: FontWeight.bold),
               ),
@@ -104,7 +104,7 @@ class _MapScreenState extends State<MapScreen> {
             TextField(
               controller: nameCtrl,
               decoration: InputDecoration(
-                labelText: '名前（例：Main Building前）',
+                labelText: 'Name (e.g. Near Main Building)',
                 prefixIcon: const Icon(Icons.label_rounded),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -117,7 +117,7 @@ class _MapScreenState extends State<MapScreen> {
               controller: commentCtrl,
               maxLines: 2,
               decoration: InputDecoration(
-                labelText: 'コメント（状態・メモなど）',
+                labelText: 'Comment (condition, notes, etc.)',
                 prefixIcon: const Icon(Icons.chat_bubble_outline_rounded),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -132,7 +132,7 @@ class _MapScreenState extends State<MapScreen> {
                   child: OutlinedButton.icon(
                     onPressed: () => _confirmDelete(ctx, existing),
                     icon: const Icon(Icons.delete_rounded, color: Colors.red),
-                    label: const Text('削除',
+                    label: const Text('Delete',
                         style: TextStyle(color: Colors.red)),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Colors.red),
@@ -171,11 +171,11 @@ class _MapScreenState extends State<MapScreen> {
                       });
                     }
                     if (ctx.mounted) Navigator.pop(ctx);
-                    _showSnack(isNew ? '✅ ゴミ箱を追加しました！' : '✅ 保存しました！');
+                    _showSnack(isNew ? '✅ Trash bin added!' : '✅ Saved!');
                   },
                   icon: Icon(
                       isNew ? Icons.add_location_alt : Icons.save_rounded),
-                  label: Text(isNew ? '追加する' : '保存する'),
+                  label: Text(isNew ? 'Add' : 'Save'),
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF00C853),
                     shape: RoundedRectangleBorder(
@@ -197,13 +197,13 @@ class _MapScreenState extends State<MapScreen> {
       builder: (ctx) => AlertDialog(
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('🗑️ ゴミ箱を削除'),
-        content:
-            Text('「${bin.name.isEmpty ? '名前なし' : bin.name}」を削除しますか？'),
+        title: const Text('🗑️ Delete Trash Bin'),
+        content: Text(
+            'Delete "${bin.name.isEmpty ? 'Unnamed' : bin.name}"?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('キャンセル')),
+              child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               await _trashBinService.delete(bin.id);
@@ -211,21 +211,21 @@ class _MapScreenState extends State<MapScreen> {
               setState(() => _trashBins.removeWhere((b) => b.id == bin.id));
               if (ctx.mounted) Navigator.pop(ctx);
               if (sheetCtx.mounted) Navigator.pop(sheetCtx);
-              _showSnack('🗑️ 削除しました');
+              _showSnack('🗑️ Deleted');
             },
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('削除する'),
+            child: const Text('Delete'),
           ),
         ],
       ),
     );
   }
 
-  // ─── 掃除記録 ────────────────────────────────────────────
+  // ─── Cleaning Record ─────────────────────────────────────
 
   Future<void> _recordCleanedLocation() async {
     if (_currentPosition == null) {
-      _showSnack('📍 GPS位置を取得中です…');
+      _showSnack('📍 Getting GPS location…');
       return;
     }
     setState(() => _isRecording = true);
@@ -240,7 +240,7 @@ class _MapScreenState extends State<MapScreen> {
       _cleanedLocations.add(point);
       _isRecording = false;
     });
-    _showSnack('🌟 掃除完了！ありがとうございます！');
+    _showSnack('🌟 Area cleaned! Thank you!');
   }
 
   void _centerOnMyLocation() {
@@ -249,7 +249,7 @@ class _MapScreenState extends State<MapScreen> {
           LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
           17);
     } else {
-      _showSnack('📍 現在地を取得できません');
+      _showSnack('📍 Cannot get current location');
     }
   }
 
@@ -319,7 +319,7 @@ class _MapScreenState extends State<MapScreen> {
             ],
           ),
 
-          // 操作ガイド
+          // Hint bar
           Positioned(
             top: kToolbarHeight + MediaQuery.of(context).padding.top + 8,
             left: 12,
@@ -337,16 +337,16 @@ class _MapScreenState extends State<MapScreen> {
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('👆 タップ→編集  ',
+                  Text('👆 Tap to edit  ',
                       style: TextStyle(fontSize: 12)),
-                  Text('✋ 長押し→ゴミ箱追加',
+                  Text('✋ Long press to add bin',
                       style: TextStyle(fontSize: 12)),
                 ],
               ),
             ),
           ),
 
-          // 凡例
+          // Legend
           Positioned(
             bottom: 90,
             left: 12,
@@ -364,17 +364,17 @@ class _MapScreenState extends State<MapScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _legendRow('🗑️', 'ゴミ箱 ${_trashBins.length}個'),
+                  _legendRow('🗑️', 'Bins: ${_trashBins.length}'),
                   const SizedBox(height: 4),
-                  _legendRow('✅', '掃除済み ${_cleanedLocations.length}箇所'),
+                  _legendRow('✅', 'Cleaned: ${_cleanedLocations.length}'),
                   const SizedBox(height: 4),
-                  const _LegendRow(emoji: '🔵', label: '現在地'),
+                  const _LegendRow(emoji: '🔵', label: 'My location'),
                 ],
               ),
             ),
           ),
 
-          // 現在地ボタン
+          // My location button
           Positioned(
             bottom: 90,
             right: 12,
@@ -400,7 +400,7 @@ class _MapScreenState extends State<MapScreen> {
                 child: CircularProgressIndicator(
                     color: Colors.white, strokeWidth: 2.5))
             : const Text('✅', style: TextStyle(fontSize: 20)),
-        label: const Text('掃除完了を記録',
+        label: const Text('Mark as Cleaned',
             style: TextStyle(fontWeight: FontWeight.bold)),
       ),
     );
@@ -467,7 +467,7 @@ class _MapScreenState extends State<MapScreen> {
       _LegendRow(emoji: emoji, label: label);
 }
 
-// ─── サブWidget ──────────────────────────────────────────
+// ─── Sub Widgets ─────────────────────────────────────────
 
 class _BinMarker extends StatelessWidget {
   final bool hasComment;
