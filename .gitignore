@@ -1,5 +1,20 @@
-# Old Android Studio Kotlin project (replaced by Flutter)
-App/
+# Old Android Studio Kotlin project files (mixed into app/ on Windows)
+app/.gradle/
+app/.kotlin/
+app/local.properties
+app/build/
+app/app/
+app/gradle/
+app/gradlew
+app/gradlew.bat
+app/build.gradle.kts
+app/settings.gradle.kts
+app/gradle.properties
+app/.gitignore
+app/android/app/src/main/java/
+
+# Flutter metadata
+.metadata
 
 # Miscellaneous
 *.class
