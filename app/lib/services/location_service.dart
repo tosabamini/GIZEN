@@ -1,5 +1,8 @@
+import 'dart:io' show Platform;
+
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/location_point.dart';
 
 class LocationService {
@@ -27,6 +30,35 @@ class LocationService {
           distanceFilter: 5,
         ),
       );
+
+  // Background stream: keeps GPS alive when app is backgrounded during cleaning.
+  Stream<Position> getBackgroundPositionStream() {
+    if (Platform.isAndroid) {
+      return Geolocator.getPositionStream(
+        locationSettings: AndroidSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 5,
+          foregroundNotificationConfig: const ForegroundNotificationConfig(
+            notificationTitle: '🧹 GIZEN — Cleaning in progress',
+            notificationText: 'GPS is tracking your cleaning route.',
+            enableWakeLock: true,
+            setOngoing: true,
+          ),
+        ),
+      );
+    } else if (Platform.isIOS) {
+      return Geolocator.getPositionStream(
+        locationSettings: AppleSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 5,
+          allowBackgroundLocationUpdates: true,
+          pauseLocationUpdatesAutomatically: false,
+          showBackgroundLocationIndicator: true,
+        ),
+      );
+    }
+    return getPositionStream();
+  }
 
   Future<List<LocationPoint>> loadCleanedLocations() async {
     final prefs = await SharedPreferences.getInstance();

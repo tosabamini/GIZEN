@@ -6,6 +6,18 @@
 	<string>現在地を表示するためにGPSを使用します</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>掃除場所を記録するためにGPSを使用します</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to photograph cleaned areas and team members</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Used to select photos of cleaned areas for the session log</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Used to save photos from cleaning sessions</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>GPS tracks your cleaning route even when the app is in the background</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
