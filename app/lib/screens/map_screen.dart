@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
+import '../data/buildings.dart';
 import '../models/trash_bin.dart';
 import '../models/location_point.dart';
 import '../services/location_service.dart';
@@ -387,6 +389,7 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
               ),
+              MarkerLayer(markers: _buildingLabelMarkers()),
               MarkerLayer(markers: _cleanedMarkers()),
               MarkerLayer(markers: _trashBinMarkers()),
               if (_currentPosition != null)
@@ -552,6 +555,15 @@ class _MapScreenState extends State<MapScreen> {
         ),
       );
 
+  List<Marker> _buildingLabelMarkers() => kBuildings
+      .map((b) => Marker(
+            point: b.location,
+            width: 130,
+            height: 36,
+            child: _BuildingLabel(name: b.name),
+          ))
+      .toList();
+
   Widget _legendRow(String emoji, String label) =>
       _LegendRow(emoji: emoji, label: label);
 }
@@ -601,6 +613,38 @@ class _BinMarker extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _BuildingLabel extends StatelessWidget {
+  final String name;
+  const _BuildingLabel({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xF0FFFFFF),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [
+            BoxShadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 2)),
+          ],
+        ),
+        child: Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.nunito(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF2E7D32),
+            letterSpacing: 0.2,
+          ),
+        ),
+      ),
     );
   }
 }
