@@ -4,9 +4,10 @@ import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
-import '../data/buildings.dart';
+import '../models/building.dart';
 import '../models/trash_bin.dart';
 import '../models/location_point.dart';
+import '../services/building_service.dart';
 import '../services/location_service.dart';
 import '../services/trash_bin_service.dart';
 
@@ -21,6 +22,7 @@ class _MapScreenState extends State<MapScreen> {
   final _mapController = MapController();
   final _locationService = LocationService();
   final _trashBinService = TrashBinService();
+  final _buildingService = BuildingService();
 
   static const _iitkgpCenter = LatLng(22.3149, 87.3105);
   static const _campusSW = LatLng(22.292, 87.276);
@@ -31,6 +33,7 @@ class _MapScreenState extends State<MapScreen> {
   Position? _currentPosition;
   List<TrashBin> _trashBins = [];
   List<LocationPoint> _cleanedLocations = [];
+  List<Building> _buildings = [];
   bool _isRecording = false;
 
   // Download state
@@ -46,11 +49,13 @@ class _MapScreenState extends State<MapScreen> {
     final pos = await _locationService.getCurrentPosition();
     final bins = await _trashBinService.loadAll();
     final cleaned = await _locationService.loadCleanedLocations();
+    final buildings = await _buildingService.loadAll();
     if (!mounted) return;
     setState(() {
       _currentPosition = pos;
       _trashBins = bins;
       _cleanedLocations = cleaned;
+      _buildings = buildings;
     });
     _locationService.getPositionStream().listen((pos) {
       if (mounted) setState(() => _currentPosition = pos);
@@ -555,14 +560,211 @@ class _MapScreenState extends State<MapScreen> {
         ),
       );
 
-  List<Marker> _buildingLabelMarkers() => kBuildings
+  List<Marker> _buildingLabelMarkers() => _buildings
       .map((b) => Marker(
             point: b.location,
             width: 130,
             height: 36,
-            child: _BuildingLabel(name: b.name),
+            child: GestureDetector(
+              onTap: () => _showBuildingSheet(b),
+              child: _BuildingLabel(name: b.name, colorValue: b.colorValue),
+            ),
           ))
       .toList();
+
+  static const _presetColors = [
+    0xF0FFFFFF, // White
+    0xFFFFF9C4, // Yellow
+    0xFFE8F5E9, // Mint
+    0xFFE3F2FD, // Sky blue
+    0xFFFCE4EC, // Pink
+    0xFFEDE7F6, // Lavender
+    0xFFFFF3E0, // Peach
+    0xFFE0F2F1, // Teal
+  ];
+
+  void _showBuildingSheet(Building building) {
+    final nameCtrl = TextEditingController(text: building.name);
+    int selectedColor = building.colorValue;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+              20, 12, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0x2600C853),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.location_city_rounded,
+                      color: Color(0xFF00C853), size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Text('Edit Building Label',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ]),
+              const SizedBox(height: 20),
+              TextField(
+                controller: nameCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Building name',
+                  prefixIcon: const Icon(Icons.edit_rounded),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('Label color',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[700])),
+              const SizedBox(height: 8),
+              Row(
+                children: _presetColors
+                    .map((c) => GestureDetector(
+                          onTap: () =>
+                              setModalState(() => selectedColor = c),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: Color(c),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: selectedColor == c
+                                    ? const Color(0xFF00C853)
+                                    : Colors.grey.shade300,
+                                width: selectedColor == c ? 2.5 : 1,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                    color: Color(0x22000000), blurRadius: 4)
+                              ],
+                            ),
+                            child: selectedColor == c
+                                ? const Icon(Icons.check,
+                                    size: 16, color: Color(0xFF00C853))
+                                : null,
+                          ),
+                        ))
+                    .toList(),
+              ),
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        _confirmDeleteBuilding(ctx, building),
+                    icon:
+                        const Icon(Icons.delete_rounded, color: Colors.red),
+                    label: const Text('Delete',
+                        style: TextStyle(color: Colors.red)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.red),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      final trimmed = nameCtrl.text.trim();
+                      final updated = building.copyWith(
+                        name: trimmed.isEmpty ? building.name : trimmed,
+                        colorValue: selectedColor,
+                      );
+                      await _buildingService.update(updated);
+                      if (!mounted) return;
+                      setState(() {
+                        final i = _buildings
+                            .indexWhere((b) => b.id == updated.id);
+                        if (i != -1) _buildings[i] = updated;
+                      });
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      _showSnack('✅ Building updated!');
+                    },
+                    icon: const Icon(Icons.save_rounded),
+                    label: const Text('Save'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF00C853),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteBuilding(BuildContext sheetCtx, Building building) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('🏛️ Remove Building Label'),
+        content: Text(
+            'Remove "${building.name}" from the map?\n(Only removes the label, not the actual building)'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () async {
+              await _buildingService.delete(building.id);
+              if (!mounted) return;
+              setState(
+                  () => _buildings.removeWhere((b) => b.id == building.id));
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (sheetCtx.mounted) Navigator.pop(sheetCtx);
+              _showSnack('🗑️ Label removed');
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _legendRow(String emoji, String label) =>
       _LegendRow(emoji: emoji, label: label);
@@ -619,18 +821,27 @@ class _BinMarker extends StatelessWidget {
 
 class _BuildingLabel extends StatelessWidget {
   final String name;
-  const _BuildingLabel({required this.name});
+  final int colorValue;
+  const _BuildingLabel({required this.name, required this.colorValue});
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = Color(colorValue);
+    final textColor = bgColor.computeLuminance() > 0.5
+        ? const Color(0xFF2E7D32)
+        : Colors.white;
+
     return Center(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: const Color(0xF0FFFFFF),
+          color: bgColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: const [
-            BoxShadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 2)),
+            BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 6,
+                offset: Offset(0, 2)),
           ],
         ),
         child: Text(
@@ -640,7 +851,7 @@ class _BuildingLabel extends StatelessWidget {
           style: GoogleFonts.nunito(
             fontSize: 12,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF2E7D32),
+            color: textColor,
             letterSpacing: 0.2,
           ),
         ),
