@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/trash_bin.dart';
@@ -20,11 +21,18 @@ class _MapScreenState extends State<MapScreen> {
   final _trashBinService = TrashBinService();
 
   static const _iitkgpCenter = LatLng(22.3149, 87.3105);
+  static const _campusSW = LatLng(22.292, 87.276);
+  static const _campusNE = LatLng(22.348, 87.345);
+  static const _tileUrl =
+      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
 
   Position? _currentPosition;
   List<TrashBin> _trashBins = [];
   List<LocationPoint> _cleanedLocations = [];
   bool _isRecording = false;
+
+  // Download state
+  double? _downloadProgress; // null = idle, 0-1 = in progress, 1 = done
 
   @override
   void initState() {
@@ -253,6 +261,49 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  Future<void> _downloadCampus() async {
+    if (_downloadProgress != null) return;
+    setState(() => _downloadProgress = 0);
+
+    final region = RectangleRegion(LatLngBounds(_campusSW, _campusNE));
+    final downloadable = region.toDownloadable(
+      minZoom: 14,
+      maxZoom: 17,
+      options: TileLayer(
+        urlTemplate: _tileUrl,
+        subdomains: const ['a', 'b', 'c', 'd'],
+      ),
+    );
+
+    FMTCStore('campus').download.startForeground(
+      region: downloadable,
+      parallelThreads: 3,
+      maxBufferLength: 200,
+      skipExistingTiles: true,
+      skipSeaTiles: false,
+      maxReportInterval: const Duration(milliseconds: 500),
+    ).listen(
+      (progress) {
+        if (mounted) {
+          setState(
+              () => _downloadProgress = progress.percentageProgress / 100);
+        }
+      },
+      onDone: () {
+        if (mounted) {
+          setState(() => _downloadProgress = null);
+          _showSnack('✅ Campus map downloaded for offline use!');
+        }
+      },
+      onError: (_) {
+        if (mounted) {
+          setState(() => _downloadProgress = null);
+          _showSnack('⚠️ Download failed. Check connection.');
+        }
+      },
+    );
+  }
+
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -282,7 +333,7 @@ class _MapScreenState extends State<MapScreen> {
         ]),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 4),
             child: Chip(
               avatar: const Text('🗑️', style: TextStyle(fontSize: 14)),
               label: Text('${_trashBins.length}',
@@ -292,6 +343,22 @@ class _MapScreenState extends State<MapScreen> {
               side: BorderSide.none,
             ),
           ),
+          if (_downloadProgress != null)
+            const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 2.5),
+              ),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.cloud_download_rounded),
+              tooltip: 'Download campus map for offline use',
+              onPressed: _downloadCampus,
+            ),
         ],
       ),
       body: Stack(
@@ -301,16 +368,24 @@ class _MapScreenState extends State<MapScreen> {
             options: MapOptions(
               initialCenter: _iitkgpCenter,
               initialZoom: 15.0,
-              minZoom: 13.0,
-              maxZoom: 19.0,
+              minZoom: 14.0,
+              maxZoom: 18.0,
+              cameraConstraint: CameraConstraint.contain(
+                bounds: LatLngBounds(_campusSW, _campusNE),
+              ),
               onLongPress: _onMapLongPress,
             ),
             children: [
               TileLayer(
-                urlTemplate:
-                    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                urlTemplate: _tileUrl,
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.gizen.gizen',
+                tileProvider: FMTCStore('campus').getTileProvider(
+                  settings: FMTCTileProviderSettings(
+                    behavior: CacheBehavior.cacheFirst,
+                    cachedValidDuration: const Duration(days: 60),
+                  ),
+                ),
               ),
               MarkerLayer(markers: _cleanedMarkers()),
               MarkerLayer(markers: _trashBinMarkers()),
@@ -373,6 +448,20 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
+
+          // Download progress bar
+          if (_downloadProgress != null)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: LinearProgressIndicator(
+                value: _downloadProgress,
+                backgroundColor: Colors.white38,
+                color: const Color(0xFF00C853),
+                minHeight: 4,
+              ),
+            ),
 
           // My location button
           Positioned(
